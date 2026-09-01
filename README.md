@@ -4,7 +4,7 @@
 
 A skill that minimizes **input-token cost** during coding, debugging, review, and investigation by packing many actions into each turn and hard-capping the bytes any tool may return — without skipping required correctness checks.
 
-**A/B-tested on a full static-website build (8 pages, 9 assets, self-check script): ~50% fewer input tokens with the skill than without it.**
+**A/B-tested across three job types — a full 8-page website build, a bugfix in a small CLI, and a 12-question audit of a 132-file monorepo: 31–54% fewer tokens and 23–60% less wall-clock time with the skill.**
 
 ## Why input tokens explode
 
@@ -23,13 +23,15 @@ Extra turns and extra bytes compound: each new turn re-bills everything already 
 
 | Section | Rule |
 |---|---|
-| The Turn Rule | Speculative chains: predict the whole action sequence, batch every independent call (2, 5, 10, 20 files) into one message; on the first surprise fall back to single-action mode. Forbidden between actions: status updates, restating the plan, thinking out loud. |
-| Hard Output Caps | Reads ≤ ~150 lines (300 = defect), `rg -m 20` / `head -n 40` search, `git diff --stat` first, `2>&1 \| tail -n 30` by default, never full logs/lockfiles/minified/JSON dumps, no result over ~10k tokens. |
-| Delegate Broad Exploration | If honest discovery would pull >~3 files / ~400 lines into the main thread, send a search subagent that burns its own throwaway context and returns a <300-word conclusion. Delegate facts, not content you will edit. |
-| Complete Work In Your Head | Ship finished code in one pass — imports, error handling, tests in the same Write. One patch per file. Never re-read what you just wrote. Fold all fixes implied by new results into the next turn. |
-| Verify Once, Quietly | One verification turn after all writes, capped output. Never re-run a passing command. |
-| Session Hygiene | Reuse, never re-fetch. `path:line` references instead of quoted content. Two failed attempts = stop patching, re-derive from scratch. Offload long-horizon state to a notes file that survives compaction. |
-| Non-Negotiables | Density never overrides correctness: no guessing file contents, no skipped tests. An under-read that forces a second read costs more than the right-sized read. |
+| The Cost Model | Cost ≈ (bytes in context) × (turns remaining). Both factors must be attacked; neither may be traded for the other. |
+| Turn Budgets by Job Type | Lookup 1–2 tool turns, review 2–3, bugfix 3, feature 4–6, unknown huge repo +1. Plus the no-regression rule: any rule that would add a turn the job does not need is skipped, and the protocol is read once, never re-read. |
+| The Turn Rule | Speculative chains: predict the whole sequence, fire it batched (all Writes together, all reads together); for a question set put every symbol in one `rg` alternation. On the first surprise drop to single-action mode. Forbidden between actions: status updates, restating the plan, thinking out loud. |
+| Hard Output Caps | A search hit is already the answer — re-opening the file to confirm is a defect. Reads ≤ ~150 lines (300 = defect), `rg -m 20` / `head -n 40`, `git diff --stat` first, `2>&1 \| tail -n 30`, never full logs/lockfiles/minified/JSON dumps, no result over ~10k tokens. |
+| Delegate Only Above the Threshold | A subagent re-bills its own prompt on every request, so delegate only above ~2,000 lines / ~15 files or when the target is unknown. Never two agents on one question, never delegate what one `rg` answers. Delegate facts, not content you will edit. |
+| Finish The Thinking, Then Emit | One pass per file: imports, error handling, tests in the same Write. Never re-read what you just wrote. Fold every fix implied by new results into one next turn. |
+| Verify Once | Edits: one capped verification turn, no unrequested smoke checks. Lookups: the answer is the verification. |
+| Session Hygiene | Reuse, never re-fetch. `path:line` instead of quoted content. Two failed attempts = re-derive, don't patch again. Long sessions: one notes file that survives compaction. |
+| Non-Negotiables | Density never overrides correctness: no guessed file contents, no skipped tests, and an under-read that forces a second read costs more than the right-sized read. |
 
 ## Installation
 
@@ -105,11 +107,19 @@ Paste the body of `SKILL.md` (everything after the frontmatter) into your `AGENT
 
 > Note: the subagent-delegation section only applies in agents that have subagents. Everywhere else that section is simply inert.
 
-## A/B test methodology
+## A/B test results
 
-The same large task — build a complete 8-page static analytics-SaaS website (HTML + CSS + vanilla JS, 4 stylesheets, 5 scripts, self-check `tools/check.py`, README) — was given to two identical agents in isolated folders: one with the skill loaded, one without. Metrics were computed from model-I/O transcripts (requests and token usage per API call), not from self-reports.
+Each task was given to two identical agents running the same model in byte-identical copies of the same fixture, in parallel: one with the skill loaded, one without. Token and tool counts come from the harness usage records, not self-reports. Both sides produced correct results in every run (tests passing / all 12 answers right).
 
-**Result: ~50% fewer input tokens with the skill.** Fewer turns (batched writes/searches instead of one-small-step-per-turn) and smaller per-turn results (capped reads, bounded search output) compound: every avoided line is re-billed by every later turn it would have survived into.
+| Task | Tokens with / without | Tool calls | Time |
+|---|---|---|---|
+| Bugfix — failing test in a 9-file Node CLI | **127.8k / 279.4k** (−54%) | 9 / 19 (−53%) | 67s / 167s (−60%) |
+| Audit — 12 questions across a 132-file monorepo | **162.7k / 235.0k** (−31%) | 7 / 10 (−30%) | 92s / 120s (−23%) |
+| Build — complete 8-page static website | ~−50% input tokens | fewer turns | — |
+
+**Why it works.** Cost ≈ (bytes in context) × (turns remaining), so both factors are attacked at once: batched actions collapse turns, and hard caps keep each turn's residue small. Every line kept out of context is a line that is not re-billed by every later turn.
+
+**Why earlier versions regressed.** A first draft won on build tasks but lost badly on audits (+72% tokens): it delegated a scan a single `rg` could answer, and re-opened files it had already found. That is what the per-job turn budgets, the "a search hit is already the answer" cap, and the delegation threshold (~2,000 lines / ~15 files) exist to prevent. The protocol is explicitly forbidden from making any job cost more than it would without it.
 
 ## Notes and honest limitations
 
