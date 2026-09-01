@@ -1,6 +1,8 @@
 # Context Budget
 
-A [ZCode](https://zcode.dev) skill that minimizes **input-token cost** during coding, debugging, review, and investigation by packing many actions into each turn and hard-capping the bytes any tool may return — without skipping required correctness checks.
+[English](README.md) | [Русский](README.ru-RU.md)
+
+A skill that minimizes **input-token cost** during coding, debugging, review, and investigation by packing many actions into each turn and hard-capping the bytes any tool may return — without skipping required correctness checks.
 
 **A/B-tested on a full static-website build (8 pages, 9 assets, self-check script): ~50% fewer input tokens with the skill than without it.**
 
@@ -31,26 +33,77 @@ Extra turns and extra bytes compound: each new turn re-bills everything already 
 
 ## Installation
 
-Copy the skill folder into your ZCode skills directory:
+The skill is a plain `SKILL.md` (plus optional UI metadata) — no dependencies, no scripts. Native **Agent Skills** support exists in ZCode, Claude Code, and Codex CLI. For rules-based agents, install it as an always-on rule instead.
+
+### ZCode
 
 ```bash
-# user-level (available in every workspace)
+git clone https://github.com/SoftArax/Context-Budget.git
 cp -r Context-Budget ~/.zcode/skills/context-budget
 ```
 
-or clone and copy:
+User-level (every workspace). For a single project, copy into `<project>/.zcode/skills/context-budget` instead.
+
+### Claude Code
 
 ```bash
-git clone https://github.com/<your-username>/Context-Budget.git
-cp -r Context-Budget ~/.zcode/skills/context-budget
+git clone https://github.com/SoftArax/Context-Budget.git
+cp -r Context-Budget ~/.claude/skills/context-budget
 ```
 
-The skill consists of:
+Same format (`SKILL.md` with `name`/`description` frontmatter) — Claude Code picks it up automatically and applies it when relevant; you can also invoke it explicitly as `/context-budget`. For a single project, copy into `<project>/.claude/skills/context-budget`.
 
-- `SKILL.md` — the full protocol (name + description frontmatter, 9 sections);
-- `agents/openai.yaml` — UI metadata (display name, short description, default prompt).
+### Codex CLI
 
-No dependencies, no scripts — it is pure instructions the model follows.
+```bash
+git clone https://github.com/SoftArax/Context-Budget.git
+cp -r Context-Budget ~/.codex/skills/context-budget
+```
+
+`agents/openai.yaml` supplies the UI metadata (display name, short description, default prompt).
+
+### Cursor
+
+Agent Skills are not supported; install as an always-on Project Rule:
+
+```bash
+git clone https://github.com/SoftArax/Context-Budget.git
+mkdir -p .cursor/rules
+{ printf -- '---\ndescription: Minimize input-token cost: many actions per turn, hard-capped tool output\nglobs: \nalwaysApply: true\n---\n\n'; tail -n +5 Context-Budget/SKILL.md; } > .cursor/rules/context-budget.mdc
+```
+
+Commit the rule to the repo so the whole team gets it.
+
+### Windsurf
+
+```bash
+git clone https://github.com/SoftArax/Context-Budget.git
+mkdir -p .windsurf/rules
+tail -n +5 Context-Budget/SKILL.md > .windsurf/rules/context-budget.md
+```
+
+### Gemini CLI
+
+Append the skill body to your context file:
+
+```bash
+git clone https://github.com/SoftArax/Context-Budget.git
+tail -n +5 Context-Budget/SKILL.md >> ~/.gemini/GEMINI.md
+```
+
+### Cline / Roo Code
+
+```bash
+git clone https://github.com/SoftArax/Context-Budget.git
+mkdir -p .clinerules   # Roo Code: .roo/rules/
+tail -n +5 Context-Budget/SKILL.md > .clinerules/10-context-budget.md
+```
+
+### Anything that reads AGENTS.md
+
+Paste the body of `SKILL.md` (everything after the frontmatter) into your `AGENTS.md` — it is written agent-agnostically and works wherever the model can read project instructions.
+
+> Note: the subagent-delegation section only applies in agents that have subagents. Everywhere else that section is simply inert.
 
 ## A/B test methodology
 
