@@ -5,6 +5,8 @@ description: Minimize input-token cost and wall-clock time on any task — build
 
 # Context Budget
 
+<!-- version: 1.03 -->
+
 ## The Cost Model
 
 The transcript is re-sent as input and re-billed on **every** turn. So one line pulled into context at turn 2 is paid for again at turns 3, 4, 5… and one extra turn re-bills everything accumulated so far.
@@ -29,6 +31,8 @@ Classify the job silently on the first read of the request — never as a separa
 | **Unknown huge codebase** | +1 | one delegated exploration, then the budget above |
 
 Over budget means the plan was wrong, not that the budget was. Under budget is always allowed.
+
+**Coverage outranks caps.** When the task is exhaustive by definition — "find all defects", "list every caller", "audit the module" — the set of files in scope is part of the requirement. Enumerate that set once (one bounded listing), and look at every file in it at least once. Skipping a file because it looks unused or unimportant is not economy, it is a wrong answer: caps limit *how much* you read from a file, never *whether* you read it.
 
 **The no-regression rule.** This protocol may never make a job cost *more* than it would without it. If applying any rule here would add a turn, a read, or a check that the job does not need — skip that rule. Ceremony you skip costs nothing; ceremony you apply costs a turn plus its re-billing for the rest of the session. Read this document once; never re-read it.
 
