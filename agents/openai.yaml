@@ -1,0 +1,4 @@
+interface:
+  display_name: "Context Budget"
+  short_description: "Many actions per turn, capped context"
+  default_prompt: "Pack every independent action into one turn (all files, all searches), hard-cap every tool result, never re-read or narrate, and verify once with bounded output."
